@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.db
+.env
+data/candidates.jsonl
+data/resumes/
+\[PUB\]*/
+__MACOSX/
+node_modules/
+.DS_Store

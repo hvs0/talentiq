@@ -1,0 +1,57 @@
+team_name: "TalentIQ"
+
+primary_contact:
+  name: "Your Name"
+  email: "your.email@example.com"
+  phone: "+91-XXXXXXXXXX"
+
+team_members:
+  - name: "Your Name"
+    email: "your.email@example.com"
+    role: "ML Engineer"
+
+github_repo: "https://github.com/YOUR_USERNAME/talentiq-ranker"
+
+sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
+
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+
+compute:
+  platform: "Windows 11 PC"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.13"
+  os: "Windows 11"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: false
+  pre_computation_time_minutes: 0
+
+ai_tools_used:
+  - "Claude"
+
+ai_usage_summary: |
+  Used Claude for architecture discussion, code scaffolding,
+  and iterative debugging of scoring logic. All ranking logic, signal weights,
+  and honeypot detection rules were engineered through systematic analysis of
+  the JD and candidate data. No candidate data was fed to any external LLM
+  during ranking.
+
+methodology_summary: |
+  Pure-Python rule-based ranker with multi-signal composite scoring. Four-stage
+  pipeline: (1) Fast pre-filter eliminates ~50% candidates lacking any AI/ML
+  signal in title/skills/career. (2) Six scoring components—title relevance,
+  career history at product companies, skill match with trust weighting,
+  semantic text analysis, behavioral engagement signals, and experience fit—
+  combined into a weighted composite. (3) Honeypot detection via impossible-
+  profile heuristics (expert skills with 0 duration, title-skill mismatch).
+  (4) Fine-grained differentiation using GitHub activity, assessment scores,
+  recruiter saves, and notice period. Runtime: 47s for 100K candidates on CPU.
+  Zero external dependencies.
+
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true

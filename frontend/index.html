@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalentIQ — Intelligent Candidate Discovery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .card-hover { transition: all 0.2s; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .tab-active { border-bottom: 2px solid #7c3aed; color: #7c3aed; }
+        #modal { transition: opacity 0.3s; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- STICKY: Header + Nav -->
+    <div class="sticky top-0 z-40 bg-white shadow-sm">
+        <header class="gradient-bg text-white">
+            <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <h1 class="text-lg font-bold">TalentIQ</h1>
+                    <span class="text-purple-200 text-xs ml-2">Intelligent Candidate Discovery</span>
+                </div>
+                <div id="stats" class="text-xs text-purple-100"></div>
+            </div>
+        </header>
+        <nav class="max-w-7xl mx-auto px-6">
+            <div class="flex gap-6 border-b">
+                <button onclick="showTab('rank')" id="tab-rank" class="pb-2.5 pt-2 px-1 text-sm font-medium tab-active">🎯 Rank</button>
+                <button onclick="showTab('shortlist')" id="tab-shortlist" class="pb-2.5 pt-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700">⭐ Shortlisted <span id="shortlist-badge" class="hidden bg-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">0</span></button>
+                <button onclick="showTab('manage')" id="tab-manage" class="pb-2.5 pt-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700">👥 Manage</button>
+                <button onclick="showTab('upload')" id="tab-upload" class="pb-2.5 pt-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700">📤 Upload</button>
+            </div>
+        </nav>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-6 py-4 flex-1 w-full">
+
+        <!-- ==================== TAB: RANK ==================== -->
+        <section id="panel-rank">
+            <!-- JD input (scrolls normally) -->
+            <div class="bg-white rounded-xl shadow-sm border p-4 mb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-semibold text-gray-800">Job Description</h2>
+                    <div id="jd-id-display" class="text-xs font-mono bg-purple-50 text-purple-700 px-2 py-0.5 rounded hidden"></div>
+                </div>
+                <textarea id="jd-input" rows="5" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y" placeholder="Paste job description here..." oninput="onJDChange()"></textarea>
+                <div class="flex items-center justify-between mt-3">
+                    <label class="text-xs text-gray-500">Top: <input type="number" id="top-n" value="100" min="10" max="500" class="w-16 ml-1 border rounded px-2 py-1 text-xs"></label>
+                    <button onclick="runRanking()" id="rank-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-medium px-5 py-2 rounded-lg text-sm flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Rank Candidates
+                    </button>
+                </div>
+            </div>
+
+            <!-- STICKY: Save JD button bar (sticks below nav when scrolled) -->
+            <div class="sticky top-[89px] z-30 bg-gray-50 py-2">
+                <div class="flex items-center justify-between bg-white rounded-lg border px-4 py-2.5 shadow-sm">
+                    <div class="flex gap-4 text-xs">
+                        <span><strong class="text-purple-600" id="result-count">0</strong> ranked</span>
+                        <span><strong class="text-green-600" id="result-time">—</strong> runtime</span>
+                        <span><strong class="text-orange-600" id="selected-count">0</strong> selected</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="exportShortlistCSV()" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded">⬇ Export CSV</button>
+                        <button onclick="saveShortlistAsJob()" class="text-xs bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded font-medium">💾 Save JD & Selected</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="hidden text-center py-6">
+                <div class="inline-flex items-center gap-2 bg-white px-5 py-3 rounded-xl shadow-sm border text-sm">
+                    <svg class="animate-spin w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    Ranking candidates...
+                </div>
+            </div>
+
+            <!-- Results (scrollable) -->
+            <section id="results" class="hidden mt-2">
+                <div id="candidate-list" class="space-y-2"></div>
+            </section>
+        </section>
+
+        <!-- ==================== TAB: SHORTLIST ==================== -->
+        <section id="panel-shortlist" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Saved JD Shortlists</h2>
+                <div id="saved-jds-list" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB: MANAGE ==================== -->
+        <section id="panel-manage" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">All Candidates <span id="manage-count" class="text-sm font-normal text-gray-400"></span></h2>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="search-input" placeholder="Search name, title, skills, company..." class="border rounded-lg px-3 py-1.5 text-sm w-64 focus:ring-2 focus:ring-purple-500" oninput="searchCandidates()">
+                        <button onclick="loadManageCandidates()" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg">↻</button>
+                    </div>
+                </div>
+                <div id="manage-list" class="space-y-2 max-h-[65vh] overflow-y-auto"></div>
+                <div id="manage-pagination" class="flex justify-center gap-2 mt-4"></div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB: UPLOAD ==================== -->
+        <section id="panel-upload" class="hidden">
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-800 mb-2">📄 Upload CSV</h3>
+                    <p class="text-xs text-gray-500 mb-3">Columns: name, title, company, location, years_of_experience, skills</p>
+                    <label class="block w-full border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:border-purple-300 hover:bg-purple-50">
+                        <span class="text-sm text-gray-500">Drop CSV or click to browse</span>
+                        <input type="file" accept=".csv" class="hidden" onchange="uploadCSV(this)">
+                    </label>
+                    <div id="csv-status" class="mt-2 text-sm"></div>
+                    <div id="csv-results" class="mt-2 space-y-1 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-800 mb-2">📋 Upload Resume</h3>
+                    <p class="text-xs text-gray-500 mb-3">PDF, DOCX, or TXT — AI extracts info automatically</p>
+                    <label class="block w-full border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:border-purple-300 hover:bg-purple-50">
+                        <span class="text-sm text-gray-500">Drop resume (PDF/DOCX/TXT)</span>
+                        <input type="file" accept=".pdf,.docx,.txt" class="hidden" onchange="uploadResume(this)">
+                    </label>
+                    <div id="resume-status" class="mt-2 text-sm"></div>
+                    <div id="resume-results" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border p-6 mt-6">
+                <h3 class="font-semibold text-gray-800 mb-2">🗃️ Bulk JSON/JSONL</h3>
+                <label class="inline-block border border-gray-200 rounded-lg px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm">Choose file <input type="file" accept=".json,.jsonl" class="hidden" onchange="uploadJSON(this)"></label>
+                <span id="json-status" class="ml-3 text-sm"></span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this){this.classList.add('hidden');this.classList.remove('flex')}">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6" onclick="event.stopPropagation()">
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this){this.classList.add('hidden');this.classList.remove('flex')}">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onclick="event.stopPropagation()">
+            <div id="edit-modal-content"></div>
+        </div>
+    </div>
+
+<script>
+const API = window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://YOUR-BACKEND-URL.onrender.com';
+let rankedResults = [], selectedSet = new Set(), selectedCandidates = [], managePage = 1, searchTimeout = null;
+let currentJDId = null;
+
+function showTab(tab) {
+    document.querySelectorAll('[id^="panel-"]').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('[id^="tab-"]').forEach(t => { t.classList.remove('tab-active'); t.classList.add('text-gray-500'); });
+    document.getElementById('panel-' + tab).classList.remove('hidden');
+    document.getElementById('tab-' + tab).classList.add('tab-active');
+    document.getElementById('tab-' + tab).classList.remove('text-gray-500');
+    if (tab === 'manage') loadManageCandidates();
+    if (tab === 'shortlist') renderShortlistTab();
+}
+
+fetch(`${API}/api/stats`).then(r=>r.json()).then(d=>{document.getElementById('stats').textContent=d.total_candidates.toLocaleString()+' candidates ready'}).catch(()=>{});
+
+function onJDChange() {
+    const jd = document.getElementById('jd-input').value.trim();
+    if (jd.length > 20) {
+        let hash = 0;
+        for (let i = 0; i < Math.min(jd.length, 200); i++) { hash = ((hash << 5) - hash) + jd.charCodeAt(i); hash |= 0; }
+        currentJDId = 'JD_' + Math.abs(hash).toString(36).toUpperCase().padStart(6, '0').slice(0,6);
+        const el = document.getElementById('jd-id-display');
+        el.textContent = currentJDId;
+        el.classList.remove('hidden');
+    } else {
+        document.getElementById('jd-id-display').classList.add('hidden');
+        currentJDId = null;
+    }
+}
+
+async function runRanking() {
+    const jd = document.getElementById('jd-input').value.trim();
+    if (!jd) { alert('Paste a JD first'); return; }
+    const btn = document.getElementById('rank-btn');
+    btn.disabled = true; btn.textContent = '⏳ Ranking...';
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('results').classList.add('hidden');
+    try {
+        const resp = await fetch(`${API}/api/rank`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jd_text: jd, top_n: parseInt(document.getElementById('top-n').value)||100})});
+        const data = await resp.json();
+        rankedResults = data.candidates;
+        renderResults(data);
+    } catch(e) { alert(e.message); }
+    finally { btn.disabled = false; btn.innerHTML = '<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Rank Candidates'; document.getElementById('loading').classList.add('hidden'); }
+}
+
+function renderResults(data) {
+    document.getElementById('results').classList.remove('hidden');
+    document.getElementById('result-count').textContent = data.candidates.length;
+    document.getElementById('result-time').textContent = data.runtime_seconds + 's';
+    document.getElementById('selected-count').textContent = selectedSet.size;
+    document.getElementById('candidate-list').innerHTML = data.candidates.map((c, i) => `
+        <div class="bg-white rounded-lg shadow-sm border p-3 card-hover fade-in">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <input type="checkbox" class="w-4 h-4 accent-purple-600 cursor-pointer" ${selectedSet.has(c.candidate_id)?'checked':''} onchange="toggleSelect(${i})">
+                    <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center text-white font-bold text-[10px] cursor-pointer" onclick="showDetail(${i})">${c.rank}</div>
+                    <div class="cursor-pointer" onclick="showDetail(${i})">
+                        <div class="font-medium text-gray-800 text-sm">${c.profile.name} <span class="text-[10px] font-mono text-gray-400">${c.candidate_id}</span></div>
+                        <div class="text-xs text-gray-500">${c.profile.title} @ ${c.profile.company} • ${c.profile.years_exp.toFixed(1)}yrs • ${c.profile.location||''}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                        <div class="text-lg font-bold text-purple-600">${(c.score*100).toFixed(1)}%</div>
+                        <button onclick="event.stopPropagation();viewCV('${c.candidate_id}')" class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 mt-1">📄 CV</button>
+                    </div>
+            </div>
+            <div class="mt-1.5 flex flex-wrap gap-1 ml-[52px]">${c.ai_skills.slice(0,5).map(s=>`<span class="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[10px]">${s}</span>`).join('')}</div>
+        </div>
+    `).join('');
+}
+
+function toggleSelect(idx) {
+    const c = rankedResults[idx];
+    if (selectedSet.has(c.candidate_id)) { selectedSet.delete(c.candidate_id); selectedCandidates = selectedCandidates.filter(x=>x.candidate_id!==c.candidate_id); }
+    else { selectedSet.add(c.candidate_id); selectedCandidates.push({candidate_id:c.candidate_id, rank:c.rank, score:c.score, profile:c.profile, ai_skills:c.ai_skills}); }
+    document.getElementById('selected-count').textContent = selectedSet.size;
+    updateBadge();
+}
+
+function updateBadge() {
+    const b = document.getElementById('shortlist-badge');
+    if (selectedSet.size > 0) { b.textContent = selectedSet.size; b.classList.remove('hidden'); } else b.classList.add('hidden');
+}
+
+function showDetail(idx) {
+    const c = rankedResults[idx];
+    document.getElementById('modal-content').innerHTML = `
+        <div class="flex justify-between items-start mb-4"><div><h2 class="text-lg font-bold">${c.profile.name}</h2><p class="text-sm text-gray-500">${c.profile.title} @ ${c.profile.company}</p><p class="text-xs text-gray-400 font-mono">${c.candidate_id}</p></div><div class="text-2xl font-bold text-purple-600">${(c.score*100).toFixed(1)}%</div></div>
+        <div class="grid grid-cols-4 gap-2 mb-4">${[['Exp',c.profile.years_exp.toFixed(1)+'y'],['GitHub',c.signals.github_score>=0?c.signals.github_score:'—'],['Response',(c.signals.response_rate*100).toFixed(0)+'%'],['Notice',c.signals.notice_period+'d']].map(([l,v])=>`<div class="bg-gray-50 rounded p-2 text-center"><div class="text-sm font-bold">${v}</div><div class="text-[10px] text-gray-500">${l}</div></div>`).join('')}</div>
+        <div class="mb-4"><h3 class="font-semibold text-sm mb-1">Score Breakdown</h3>${Object.entries(c.breakdown).map(([k,v])=>`<div class="flex items-center gap-2 mb-1"><span class="w-20 text-xs text-gray-500">${k}</span><div class="flex-1 h-2 bg-gray-100 rounded-full"><div class="h-full bg-purple-500 rounded-full" style="width:${v*100}%"></div></div><span class="text-xs w-8 text-right">${(v*100).toFixed(0)}%</span></div>`).join('')}</div>
+        ${c.profile.summary?`<p class="text-xs text-gray-600 mb-4">${c.profile.summary.slice(0,300)}</p>`:''}
+        <div class="mb-3"><h3 class="font-semibold text-sm mb-1">Skills</h3><div class="flex flex-wrap gap-1">${c.ai_skills.map(s=>`<span class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">${s}</span>`).join('')}</div></div>
+        ${c.career_history.length?`<div><h3 class="font-semibold text-sm mb-1">Career</h3>${c.career_history.map(j=>`<div class="border-l-2 border-purple-200 pl-2 mb-1.5"><div class="text-xs font-medium">${j.title} @ ${j.company} <span class="text-gray-400">(${j.duration_months}mo)</span></div></div>`).join('')}</div>`:''}
+        <button onclick="document.getElementById('modal').classList.add('hidden');document.getElementById('modal').classList.remove('flex')" class="mt-4 w-full py-2 bg-gray-100 rounded-lg text-sm">Close</button>`;
+    document.getElementById('modal').classList.remove('hidden');
+    document.getElementById('modal').classList.add('flex');
+}
+
+async function saveShortlistAsJob() {
+    if (!selectedCandidates.length) { alert('Select candidates first (checkboxes in ranking)'); return; }
+    const jd = document.getElementById('jd-input').value.trim();
+    if (!jd) { alert('Enter a JD first'); return; }
+    onJDChange();
+    const title = currentJDId + ' — ' + jd.split('\n')[0].slice(0,50);
+    const body = {title, jd_text: jd, jd_id: currentJDId, selected_candidates: selectedCandidates.map(c=>({candidate_id:c.candidate_id, rank:c.rank, score:c.score}))};
+    const resp = await fetch(`${API}/api/jobs`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const data = await resp.json();
+    alert(`✓ ${data.message}`);
+    selectedSet.clear(); selectedCandidates = []; updateBadge();
+    document.getElementById('selected-count').textContent = '0';
+}
+
+async function renderShortlistTab() {
+    const resp = await fetch(`${API}/api/jobs`);
+    const data = await resp.json();
+    const list = document.getElementById('saved-jds-list');
+    if (!data.jobs.length) { list.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">No saved shortlists yet.</p>'; return; }
+    list.innerHTML = data.jobs.map(j => {
+        const jdId = j.title.match(/^(JD_[A-Z0-9]+)/)?.[1] || '';
+        return `
+        <div class="border rounded-lg overflow-hidden">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50" onclick="toggleSavedJD(${j.job_id})">
+                <div class="flex items-center gap-2">
+                    ${jdId ? `<span class="text-[10px] font-mono px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-bold">${jdId}</span>` : ''}
+                    <span class="font-medium text-sm">${j.title.replace(/^JD_[A-Z0-9]+\s*—\s*/, '')}</span>
+                    <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${j.shortlist_count}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="event.stopPropagation();exportJobCSV(${j.job_id},'${j.title.replace(/'/g,'')}')" class="text-xs text-gray-500 px-2 py-1 hover:bg-gray-100 rounded">⬇</button>
+                    <button onclick="event.stopPropagation();deleteJob(${j.job_id})" class="text-xs text-red-500 px-2 py-1 hover:bg-red-50 rounded">🗑</button>
+                    <svg id="arrow-${j.job_id}" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+            </div>
+            <div id="jd-drop-${j.job_id}" class="hidden border-t bg-gray-50"></div>
+        </div>`;
+    }).join('');
+}
+
+async function toggleSavedJD(jobId) {
+    const drop = document.getElementById('jd-drop-'+jobId);
+    const arrow = document.getElementById('arrow-'+jobId);
+    document.querySelectorAll('[id^="jd-drop-"]').forEach(d=>{if(d.id!=='jd-drop-'+jobId){d.classList.add('hidden')}});
+    document.querySelectorAll('[id^="arrow-"]').forEach(a=>{if(a.id!=='arrow-'+jobId){a.style.transform=''}});
+    if (!drop.classList.contains('hidden')) { drop.classList.add('hidden'); arrow.style.transform=''; return; }
+    arrow.style.transform='rotate(180deg)';
+    drop.innerHTML='<p class="p-3 text-xs text-gray-400">Loading...</p>';
+    drop.classList.remove('hidden');
+    const resp = await fetch(`${API}/api/jobs/${jobId}`);
+    const job = await resp.json();
+    drop.innerHTML = `<div class="p-3 space-y-1.5 max-h-[50vh] overflow-y-auto">
+        ${job.shortlist.map(c=>{const p=c.profile||{};return`
+            <div class="flex items-center justify-between p-2.5 bg-white rounded-lg border">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full gradient-bg flex items-center justify-center text-white font-bold text-[9px]">${c.rank}</div>
+                    <div>
+                        <div class="text-xs font-medium">${p.anonymized_name||c.candidate_id} <span class="font-mono text-gray-400 text-[10px]">${c.candidate_id}</span></div>
+                        <div class="text-[10px] text-gray-500">${p.current_title||''} @ ${p.current_company||''} • ${p.years_of_experience||0}yrs</div>
+                        <div class="text-[10px] text-purple-600">${(c.skills||[]).slice(0,4).join(', ')}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-xs font-bold text-purple-600 mr-1">${(c.score*100).toFixed(1)}%</span>
+                    <button onclick="viewCV('${c.candidate_id}')" class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100" title="View CV">📄 CV</button>
+                    <button onclick="unselectFromJob(${jobId},'${c.candidate_id}')" class="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded hover:bg-red-100" title="Remove">✕</button>
+                </div>
+            </div>`}).join('')}
+    </div>`;
+}
+
+async function unselectFromJob(jobId, cid) {
+    await fetch(`${API}/api/jobs/${jobId}/shortlist/${cid}`, {method:'DELETE'});
+    toggleSavedJD(jobId);
+}
+
+function viewCV(cid) {
+    fetch(`${API}/api/resume/${cid}/exists`).then(r=>r.json()).then(d=>{
+        const closeBtn = `<button onclick="document.getElementById('modal').classList.add('hidden');document.getElementById('modal').classList.remove('flex')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>`;
+        if(d.has_resume){
+            const ext = (d.filename||'').split('.').pop().toLowerCase();
+            let viewer;
+            if(ext === 'pdf') {
+                viewer = `<iframe src="${API}/api/resume/${cid}#toolbar=0" class="w-full h-[75vh] border rounded-lg"></iframe>`;
+            } else {
+                viewer = `<iframe src="${API}/api/resume/${cid}" class="w-full h-[75vh] border rounded-lg"></iframe>
+                    <p class="text-xs text-gray-400 mt-2 text-center">If file doesn't display, it may be a .docx — <a href="${API}/api/resume/${cid}" target="_blank" class="text-blue-600 underline">open directly</a></p>`;
+            }
+            document.getElementById('modal-content').innerHTML=`
+                <div class="flex justify-between items-center mb-3"><h3 class="font-semibold">Resume — ${cid}</h3>${closeBtn}</div>${viewer}`;
+        } else {
+            document.getElementById('modal-content').innerHTML=`
+                <div class="flex justify-between items-center mb-3"><h3 class="font-semibold">Resume — ${cid}</h3>${closeBtn}</div>
+                <div class="text-center py-12 text-gray-400"><svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>No CV uploaded for this candidate</p></div>`;
+        }
+        document.getElementById('modal').classList.remove('hidden');
+        document.getElementById('modal').classList.add('flex');
+    });
+}
+
+async function exportJobCSV(jobId, title) {
+    const resp = await fetch(`${API}/api/jobs/${jobId}`); const job = await resp.json();
+    let csv='candidate_id,rank,score,name,title,company\n';
+    job.shortlist.forEach(c=>{const p=c.profile||{};csv+=`${c.candidate_id},${c.rank},${c.score},"${p.anonymized_name||''}","${p.current_title||''}","${p.current_company||''}"\n`});
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(title||'shortlist').replace(/[^a-z0-9]/gi,'_')+'.csv';a.click();
+}
+
+async function deleteJob(jobId) { if(!confirm('Delete?'))return; await fetch(`${API}/api/jobs/${jobId}`,{method:'DELETE'}); renderShortlistTab(); }
+
+function exportShortlistCSV() {
+    if(!rankedResults.length)return;
+    const items = selectedCandidates.length ? selectedCandidates : rankedResults;
+    let csv='candidate_id,rank,score,name,title,company,skills\n';
+    items.forEach(c=>{csv+=`${c.candidate_id},${c.rank},${c.score},"${c.profile.name||''}","${c.profile.title||''}","${c.profile.company||''}","${(c.ai_skills||[]).slice(0,5).join('; ')}"\n`});
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='submission.csv';a.click();
+}
+
+async function loadManageCandidates(page=1) {
+    managePage=page; const q=document.getElementById('search-input').value.trim();
+    const resp=await fetch(`${API}/api/candidates?page=${page}&limit=30&search=${encodeURIComponent(q)}`);
+    const data=await resp.json();
+    document.getElementById('manage-count').textContent=`(${data.total.toLocaleString()} ${q?'matched':'total'})`;
+    renderManageList(data.candidates);
+    const pag=document.getElementById('manage-pagination');
+    pag.innerHTML=data.pages>1?Array.from({length:Math.min(data.pages,10)},(_,i)=>`<button onclick="loadManageCandidates(${i+1})" class="px-3 py-1 text-xs rounded ${i+1===page?'bg-purple-600 text-white':'bg-gray-100'}">${i+1}</button>`).join(''):'';
+}
+function searchCandidates(){clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>loadManageCandidates(1),300)}
+function renderManageList(candidates) {
+    const list=document.getElementById('manage-list');
+    if(!candidates.length){list.innerHTML='<p class="text-gray-400 text-sm text-center py-8">No candidates found.</p>';return}
+    list.innerHTML=candidates.map(c=>{const p=c.profile||{};const sk=(c.skills||[]).slice(0,3).map(s=>s.name||s).join(', ');return`<div class="flex items-center justify-between p-2.5 border rounded-lg hover:bg-gray-50"><div class="flex-1 min-w-0"><div class="flex items-center gap-2"><span class="text-[10px] font-mono px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">${c.candidate_id}</span><span class="font-medium text-sm truncate">${p.anonymized_name||'Unknown'}</span></div><div class="text-xs text-gray-500 truncate mt-0.5">${p.current_title||''} ${p.current_company?'@ '+p.current_company:''} • ${p.years_of_experience||0}yrs • ${p.location||''}</div>${sk?`<div class="text-[10px] text-gray-400 mt-0.5">${sk}</div>`:''}</div><div class="flex gap-1 ml-2"><button onclick="viewCV('${c.candidate_id}')" class="text-blue-600 text-xs px-2 py-1 rounded hover:bg-blue-50">📄</button><button onclick="editCandidate('${c.candidate_id}')" class="text-blue-600 text-xs px-2 py-1 rounded hover:bg-blue-50">Edit</button><button onclick="deleteCandidate('${c.candidate_id}')" class="text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50">Del</button></div></div>`}).join('');
+}
+async function deleteCandidate(id){if(!confirm('Delete '+id+'?'))return;await fetch(`${API}/api/candidate/${id}`,{method:'DELETE'});loadManageCandidates(managePage)}
+async function editCandidate(id){const resp=await fetch(`${API}/api/candidate/${id}`);if(!resp.ok)return;const c=await resp.json();const p=c.profile||{};const sk=(c.skills||[]).map(s=>s.name).join(', ');document.getElementById('edit-modal-content').innerHTML=`<h2 class="text-lg font-bold mb-4">Edit ${id}</h2><form onsubmit="saveCandidate(event,'${id}')"><div class="grid grid-cols-2 gap-3 text-sm"><div><label class="text-xs text-gray-500">Name</label><input id="e-name" value="${p.anonymized_name||''}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div><div><label class="text-xs text-gray-500">Title</label><input id="e-title" value="${p.current_title||''}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div><div><label class="text-xs text-gray-500">Company</label><input id="e-company" value="${p.current_company||''}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div><div><label class="text-xs text-gray-500">Experience</label><input id="e-years" type="number" step="0.1" value="${p.years_of_experience||0}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div><div><label class="text-xs text-gray-500">Location</label><input id="e-location" value="${p.location||''}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div><div><label class="text-xs text-gray-500">Country</label><input id="e-country" value="${p.country||'India'}" class="w-full border rounded px-2 py-1.5 mt-0.5"></div></div><div class="mt-3"><label class="text-xs text-gray-500">Skills (comma-sep)</label><input id="e-skills" value="${sk}" class="w-full border rounded px-2 py-1.5 mt-0.5 text-sm"></div><div class="mt-3"><label class="text-xs text-gray-500">Summary</label><textarea id="e-summary" rows="2" class="w-full border rounded px-2 py-1.5 mt-0.5 text-sm">${p.summary||''}</textarea></div><div class="flex gap-3 mt-4"><button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-sm">Save</button><button type="button" onclick="document.getElementById('edit-modal').classList.add('hidden');document.getElementById('edit-modal').classList.remove('flex')" class="flex-1 bg-gray-100 py-2 rounded-lg text-sm">Cancel</button></div></form>`;document.getElementById('edit-modal').classList.remove('hidden');document.getElementById('edit-modal').classList.add('flex')}
+async function saveCandidate(e,id){e.preventDefault();const sk=document.getElementById('e-skills').value.split(',').map(s=>s.trim()).filter(Boolean).map(s=>({name:s,proficiency:'intermediate',endorsements:0,duration_months:12}));const data={candidate_id:id,profile:{anonymized_name:document.getElementById('e-name').value,headline:document.getElementById('e-title').value,summary:document.getElementById('e-summary').value,location:document.getElementById('e-location').value,country:document.getElementById('e-country').value,years_of_experience:parseFloat(document.getElementById('e-years').value)||0,current_title:document.getElementById('e-title').value,current_company:document.getElementById('e-company').value,current_company_size:"51-200",current_industry:""},career_history:[{company:document.getElementById('e-company').value,title:document.getElementById('e-title').value,start_date:"2020-01-01",end_date:null,duration_months:Math.round((parseFloat(document.getElementById('e-years').value)||2)*12),is_current:true,industry:"",company_size:"51-200",description:""}],education:[],skills:sk,certifications:[],languages:[],redrob_signals:{profile_completeness_score:60,signup_date:"2024-01-01",last_active_date:"2025-05-01",open_to_work_flag:true,profile_views_received_30d:0,applications_submitted_30d:0,recruiter_response_rate:0.5,avg_response_time_hours:24,skill_assessment_scores:{},connection_count:0,endorsements_received:0,notice_period_days:30,expected_salary_range_inr_lpa:{min:10,max:30},preferred_work_mode:"flexible",willing_to_relocate:true,github_activity_score:-1,search_appearance_30d:0,saved_by_recruiters_30d:0,interview_completion_rate:0.8,offer_acceptance_rate:-1,verified_email:true,verified_phone:false,linkedin_connected:false}};await fetch(`${API}/api/candidate/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});document.getElementById('edit-modal').classList.add('hidden');document.getElementById('edit-modal').classList.remove('flex');loadManageCandidates(managePage)}
+
+async function uploadCSV(input){const file=input.files[0];if(!file)return;const s=document.getElementById('csv-status'),r=document.getElementById('csv-results');s.innerHTML='<span class="text-yellow-600">⏳ Parsing...</span>';r.innerHTML='';const form=new FormData();form.append('file',file);try{const resp=await fetch(`${API}/api/upload/csv`,{method:'POST',body:form});const d=await resp.json();if(resp.ok){s.innerHTML=`<span class="text-green-600 font-medium">✓ ${d.count} imported</span>`;if(d.candidates)r.innerHTML=d.candidates.map(c=>`<div class="flex items-center gap-2 p-1.5 bg-green-50 rounded text-xs"><span class="font-mono px-1 bg-purple-100 text-purple-700 rounded">${c.candidate_id}</span><span class="font-medium">${c.profile.anonymized_name}</span><span class="text-gray-500">${c.profile.current_title}</span></div>`).join('')}else s.innerHTML=`<span class="text-red-600">✗ ${d.detail}</span>`}catch(e){s.innerHTML=`<span class="text-red-600">✗ ${e.message}</span>`}}
+async function uploadResume(input){const file=input.files[0];if(!file)return;const s=document.getElementById('resume-status'),r=document.getElementById('resume-results');s.innerHTML='<span class="text-yellow-600">⏳ Extracting...</span>';r.innerHTML='';const form=new FormData();form.append('file',file);try{const resp=await fetch(`${API}/api/upload/resume`,{method:'POST',body:form});const d=await resp.json();if(resp.ok){const c=d.candidate,p=c.profile;s.innerHTML='<span class="text-green-600 font-medium">✓ Extracted</span>';r.innerHTML=`<div class="bg-green-50 border border-green-200 rounded-lg p-3"><div class="flex items-center gap-2 mb-2"><span class="font-mono text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-bold">${c.candidate_id}</span><span class="text-sm font-semibold">${p.anonymized_name}</span></div><div class="grid grid-cols-2 gap-1 text-xs"><div><span class="text-gray-500">Title:</span> ${p.current_title||'—'}</div><div><span class="text-gray-500">Exp:</span> ${p.years_of_experience||0}y</div></div>${(c.skills||[]).length?`<div class="text-xs mt-1 text-purple-700">${c.skills.map(s=>s.name).join(', ')}</div>`:''}</div>`}else s.innerHTML=`<span class="text-red-600">✗ ${d.detail}</span>`}catch(e){s.innerHTML=`<span class="text-red-600">✗ ${e.message}</span>`}}
+async function uploadJSON(input){const file=input.files[0];if(!file)return;const s=document.getElementById('json-status');s.innerHTML='<span class="text-yellow-600">⏳</span>';const form=new FormData();form.append('file',file);try{const resp=await fetch(`${API}/api/upload`,{method:'POST',body:form});const d=await resp.json();s.innerHTML=resp.ok?`<span class="text-green-600">✓ ${d.count.toLocaleString()} loaded</span>`:`<span class="text-red-600">✗ ${d.detail}</span>`}catch(e){s.innerHTML=`<span class="text-red-600">✗ ${e.message}</span>`}}
+
+document.getElementById('jd-input').value=`Senior AI Engineer — Founding Team\nCompany: Redrob AI (Series A, Pune/Noida, India)\nExperience: 5–9 years\n\nRequired: Production embeddings-based retrieval, vector databases (Pinecone/FAISS/Weaviate), strong Python, ranking evaluation (NDCG/MRR).\nPreferred: LLM fine-tuning (LoRA/QLoRA), learning-to-rank, HR-tech exposure.\nDO NOT WANT: Consulting-only careers, keyword stuffers, non-engineering titles.`;
+onJDChange();
+</script>
+</body>
+</html>
