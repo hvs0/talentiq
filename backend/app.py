@@ -17,17 +17,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 CANDIDATES = []
 CANDIDATES_BY_ID = {}
-DATA_PATH = Path("/data/candidates.jsonl")
-SAMPLE_PATH = Path("/data/sample_candidates.json")
 
 
 def load_candidates():
     global CANDIDATES, CANDIDATES_BY_ID
     paths = [
-        Path("/data/candidates.jsonl"),
-        Path("/data/sample_candidates.json"),
         Path("./data/candidates.jsonl"),
         Path("./data/sample_candidates.json"),
+        Path("./candidates.jsonl"),
     ]
     path = None
     for p in paths:

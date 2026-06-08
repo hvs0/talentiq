@@ -2,9 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("/data/talentiq.db")
-if not DB_PATH.parent.exists():
-    DB_PATH = Path("./talentiq.db")
+DB_PATH = Path("./talentiq.db")
 
 
 def get_db():
