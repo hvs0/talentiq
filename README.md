@@ -1,6 +1,6 @@
 # TalentIQ — Intelligent Candidate Discovery & Ranking
 
-Redrob Hackathon submission: AI-powered candidate ranker that intelligently ranks 100K candidates for a Senior AI Engineer role in under 60 seconds on CPU.
+AI-powered candidate ranker that intelligently ranks 100K candidates for a Senior AI Engineer role in under 60 seconds on CPU.
 
 ## Quick Reproduce
 
